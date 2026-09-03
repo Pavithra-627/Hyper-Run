@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyper Run</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #0a0a16; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; color: #fff; }
+        #gameContainer { position: relative; width: 1000px; height: 600px; background: #050510; border: 4px solid #00f0ff; box-shadow: 0 0 20px #00f0ff; overflow: hidden; }
+        canvas { width: 100%; height: 100%; display: block; }
+        #ui { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; pointer-events: none; }
+        .hud { background: rgba(0, 0, 0, 0.6); padding: 10px 20px; border-radius: 5px; border: 1px solid #ff007f; font-size: 24px; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 10px #ff007f; }
+        #title { color: #00f0ff; text-shadow: 0 0 10px #00f0ff; }
+        #overlay { position: absolute; inset: 0; background: rgba(5, 5, 15, 0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
+        h1 { font-size: 60px; color: #00f0ff; text-shadow: 0 0 20px #00f0ff; margin-bottom: 10px; letter-spacing: 4px; }
+        p { font-size: 18px; color: #8a8ab0; margin-bottom: 30px; }
+        button { background: #ff007f; color: #fff; border: none; padding: 15px 40px; font-size: 22px; font-weight: bold; border-radius: 5px; cursor: pointer; box-shadow: 0 0 15px #ff007f; transition: 0.2s; }
+        button:hover { background: #ff3399; transform: scale(1.05); }
+    </style>
+</head>
+<body>
+
+<div id="gameContainer">
+    <div id="ui">
+        <div id="title" class="hud">HYPER RUN</div>
+        <div id="scoreDisplay" class="hud">SCORE: 0</div>
+    </div>
+
+    <div id="overlay">
+        <h1 id="screenTitle">HYPER RUN</h1>
+        <p id="screenSub">Dodge the laser grids. Use A/D or Left/Right Arrow Keys.</p>
+        <button id="actionBtn" onclick="startGame()">START GAME</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Set Canvas Internal Resolution
+    canvas.width = 1000;
+    canvas.height = 600;
+
+    let gameActive = false;
+    let score = 0;
+    let speed = 8;
+    let playerLane = 1; // 0: Left, 1: Middle, 2: Right
+    let targetX = 500;
+    let playerX = 500;
+    let obstacles = [];
+    let gameTime = 0;
+
+    const lanePositions =;
+
+    // Player inputs
+    window.addEventListener('keydown', (e) => {
+        if (!gameActive) return;
+        if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') {
+            if (playerLane > 0) playerLane--;
+        }
+        if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') {
+            if (playerLane < 2) playerLane++;
+        }
+    });
+
+    function startGame() {
+        document.getElementById('overlay').style.display = 'none';
+        score = 0;
+        speed = 8;
+        playerLane = 1;
+        playerX = 500;
+        obstacles = [];
+        gameTime = 0;
+        gameActive = true;
+        animate();
+    }
+
+    function gameOver() {
+        gameActive = false;
+        document.getElementById('screenTitle').innerText = "GAME OVER";
+        document.getElementById('screenSub').innerText = `You crashed! Final Score: ${Math.floor(score)}`;
+        document.getElementById('actionBtn').innerText = "PLAY AGAIN";
+        document.getElementById('overlay').style.display = 'flex';
+    }
+
+    function spawnObstacle() {
+        if (Math.random() < 0.02 + (gameTime * 0.00001)) { // Dynamic frequency
+            let lane = Math.floor(Math.random() * 3);
+            // Prevent exact duplicate immediate walls
+            if (obstacles.length > 0 && obstacles[obstacles.length - 1].z < 200 && obstacles[obstacles.length - 1].lane === lane) return;
+            
+            obstacles.push({
+                lane: lane,
+                z: 600, // Starts at the horizon
+                width: 120,
+                height: 40
+            });
+        }
+    }
+
+    function animate() {
+        if (!gameActive) return;
+        gameTime++;
+        score += 0.1;
+        speed += 0.002; // Gradually speed up game
+        document.getElementById('scoreDisplay').innerText = `SCORE: ${Math.floor(score)}`;
+
+        // Clear view
+        ctx.fillStyle = '#060613';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw 3D Perspective Road Grid
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 2;
+        
+        // Perspective lanes drawing lines radiating from horizon center (500, 200)
+        let horizonX = 500, horizonY = 220;
+        let groundY = 600;
+
+        let laneEdges =;
+        for(let i=0; i<laneEdges.length; i++) {
+            ctx.beginPath();
+            ctx.moveTo(horizonX + (laneEdges[i] - horizonX) * 0.1, horizonY);
+            ctx.lineTo(laneEdges[i], groundY);
+            ctx.stroke();
+        }
+
+        // Animated Horizon Horizontal Lines
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.3)';
+        let lineOffset = (gameTime * speed) % 50;
+        for (let y = horizonY; y < groundY; y += 40) {
+            let currY = y + lineOffset * ((y - horizonY) / 380);
+            if (currY < groundY) {
+                ctx.beginPath();
+                ctx.moveTo(0, currY);
+                ctx.lineTo(canvas.width, currY);
+                ctx.stroke();
+            }
+        }
+
+        // Handle Obstacles
+        spawnObstacle();
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            let obs = obstacles[i];
+            obs.z -= speed; // Move towards player
+
+            // Calculate 3D Projective Scale Mapping
+            let scale = (600 - obs.z) / 380; // Scale increases as Z decreases
+            if (scale < 0) scale = 0;
+
+            let currentHorizonLaneX = horizonX + (lanePositions[obs.lane] - horizonX) * 0.1;
+            let renderX = currentHorizonLaneX + (lanePositions[obs.lane] - currentHorizonLaneX) * scale;
+            let renderY = horizonY + (groundY - horizonY) * scale;
+            
+            let obsW = obs.width * scale;
+            let obsH = obs.height * scale;
+
+            // Draw glowing obstacle
+            ctx.fillStyle = '#ff007f';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ff007f';
+            ctx.fillRect(renderX - obsW / 2, renderY - obsH, obsW, obsH);
+            ctx.shadowBlur = 0; // Reset glow
+
+            // Collision detection layer (When obstacle reaches player's baseline Z)
+            if (obs.z <= 80 && obs.z >= 20) {
+                if (playerLane === obs.lane) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            // Remove out of bounds
+            if (obs.z < 0) obstacles.splice(i, 1);
+        }
+
+        // Interpolate Player Lane Swapping Movement smoothly
+        targetX = lanePositions[playerLane];
+        playerX += (targetX - playerX) * 0.25;
+
+        // Draw Player Character (Neon Hoverboarder)
+        let playerY = 530;
+        
+        // Draw Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath();
+        ctx.ellipse(playerX, playerY + 30, 35, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw Hoverboard
+        ctx.fillStyle = '#00f0ff';
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#00f0ff';
+        ctx.fillRect(playerX - 25, playerY + 15, 50, 10);
+
+        // Draw Character Shape
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(playerX - 10, playerY - 40, 20, 50); // Body
+        ctx.fillStyle = '#ff007f';
+        ctx.fillRect(playerX - 12, playerY - 55, 24, 15); // Helmet/Head
+        
+        ctx.shadowBlur = 0; // Reset glow
+
+        requestAnimationFrame(animate);
+    }
+</script>
+
+</body>
+</html>
