@@ -1,7 +1,7 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Fixed logical internal layout resolution
+// Fixed internal tracking dimensions
 canvas.width = 800;
 canvas.height = 500;
 
@@ -9,17 +9,17 @@ let gameActive = false;
 let score = 0;
 let baseSpeed = 7;
 let currentSpeed = 7;
-let playerLane = 1; // 0: Left, 1: Center, 2: Right
+let playerLane = 1; 
 let playerX = 400;
 let targetX = 400;
 let obstacles = [];
 let gameTime = 0;
 
-// FIX: Added the missing 3-lane coordinates
-const lanePositions = [220, 400, 580]; 
+// FIXED: Defined clearly so code never strips the list array
+const lanePositions = Array.of(160, 400, 640);
 
-// Keyboard Controls
-window.addEventListener('keydown', (e) => {
+// Key controls configuration
+window.addEventListener('keydown', function(e) {
     if (!gameActive) return;
     if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') {
         if (playerLane > 0) playerLane--;
@@ -29,20 +29,20 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-// Mobile Touch Swipe Controls
+// Mobile gesture configuration
 let touchStartX = 0;
-window.addEventListener('touchstart', (e) => {
-    touchStartX = e.changedTouches.screenX;
+window.addEventListener('touchstart', function(e) {
+    touchStartX = e.changedTouches[0].screenX;
 }, { passive: true });
 
-window.addEventListener('touchend', (e) => {
+window.addEventListener('touchend', function(e) {
     if (!gameActive) return;
-    let touchEndX = e.changedTouches.screenX;
+    let touchEndX = e.changedTouches[0].screenX;
     let diffX = touchEndX - touchStartX;
 
-    if (diffX > 40) { // Swipe Right
+    if (diffX > 40) { 
         if (playerLane < 2) playerLane++;
-    } else if (diffX < -40) { // Swipe Left
+    } else if (diffX < -40) { 
         if (playerLane > 0) playerLane--;
     }
 }, { passive: true });
@@ -62,7 +62,7 @@ function startGame() {
 function gameOver() {
     gameActive = false;
     document.getElementById('screenTitle').innerText = "CRASH DETECTED";
-    document.getElementById('screenSub').innerText = `System compromised. Final Score: ${Math.floor(score)}`;
+    document.getElementById('screenSub').innerText = "System compromised. Final Score: " + Math.floor(score);
     document.getElementById('actionBtn').innerText = "REBOOT RUN";
     document.getElementById('overlay').style.display = 'flex';
 }
@@ -88,16 +88,17 @@ function animate() {
     gameTime++;
     score += 0.1;
     currentSpeed = baseSpeed + (gameTime * 0.001); 
-    document.getElementById('scoreDisplay').innerText = `SCORE: ${Math.floor(score)}`;
+    document.getElementById('scoreDisplay').innerText = "SCORE: " + Math.floor(score);
 
+    // Render Canvas Backdrop
     ctx.fillStyle = '#050512';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     let horizonX = 400, horizonY = 180;
     let groundY = 500;
 
-    // FIX: Added the missing 4-boundary coordinates for rendering lanes
-    let laneEdges = [50, 280, 520, 750]; 
+    // FIXED: Formatted safely so borders load correctly
+    let laneEdges = Array.of(40, 280, 520, 760); 
     
     ctx.strokeStyle = '#00f0ff';
     ctx.lineWidth = 3;
@@ -108,6 +109,7 @@ function animate() {
         ctx.stroke();
     }
 
+    // Perspective floor updates
     ctx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
     ctx.lineWidth = 1;
     let lineOffset = (gameTime * currentSpeed) % 40;
@@ -121,6 +123,7 @@ function animate() {
         }
     }
 
+    // Manage falling hazards
     spawnObstacle();
     for (let i = obstacles.length - 1; i >= 0; i--) {
         let obs = obstacles[i];
@@ -152,6 +155,7 @@ function animate() {
         if (obs.z < 0) obstacles.splice(i, 1);
     }
 
+    // Left/Right character animation calculations
     targetX = lanePositions[playerLane];
     playerX += (targetX - playerX) * 0.25;
 
